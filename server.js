@@ -15,6 +15,7 @@ app.use(express.static(__dirname)); // 提供静态文件服务，用于访问HT
 // 初始化数据文件（如果不存在）
 function initDataFile() {
   if (!fs.existsSync(DATA_FILE)) {
+    // 初始化空的对象数组，每个对象包含 id 和 name 字段
     const initialData = { list: [] };
     fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf8');
   }
@@ -66,28 +67,36 @@ app.get('/api/list', (req, res) => {
 // POST接口：添加元素到list
 app.post('/api/list', (req, res) => {
   try {
-    const { item } = req.body;
+    const { id, name } = req.body;
     
-    // 验证输入
-    if (!item || typeof item !== 'string') {
+    // 验证输入：id 和 name 都必须是字符串
+    if (!id || typeof id !== 'string') {
       return res.status(400).json({
         success: false,
-        message: '请提供有效的item（字符串类型）'
+        message: '请提供有效的id（字符串类型）'
+      });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的name（字符串类型）'
       });
     }
 
     const data = readData();
     
-    // 检查是否已存在（可选：如果需要去重）
-    if (data.list.includes(item)) {
+    // 检查是否已存在相同的id（可选：如果需要去重）
+    if (data.list.some(item => item.id === id)) {
       return res.status(400).json({
         success: false,
-        message: '该元素已存在于list中'
+        message: '该id已存在于list中'
       });
     }
 
-    // 添加元素
-    data.list.push(item);
+    // 添加元素：创建包含 id 和 name 的对象
+    const newItem = { id, name };
+    data.list.push(newItem);
     
     if (writeData(data)) {
       res.json({
@@ -114,7 +123,7 @@ app.post('/api/list', (req, res) => {
 app.put('/api/list/:index', (req, res) => {
   try {
     const index = parseInt(req.params.index);
-    const { item } = req.body;
+    const { id, name } = req.body;
 
     // 验证输入
     if (isNaN(index)) {
@@ -124,10 +133,18 @@ app.put('/api/list/:index', (req, res) => {
       });
     }
 
-    if (!item || typeof item !== 'string') {
+    // 验证 id 和 name 都必须是字符串
+    if (!id || typeof id !== 'string') {
       return res.status(400).json({
         success: false,
-        message: '请提供有效的item（字符串类型）'
+        message: '请提供有效的id（字符串类型）'
+      });
+    }
+
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的name（字符串类型）'
       });
     }
 
@@ -141,8 +158,17 @@ app.put('/api/list/:index', (req, res) => {
       });
     }
 
-    // 更新元素
-    data.list[index] = item;
+    // 检查是否与其他元素的id重复（排除当前元素）
+    const duplicateIndex = data.list.findIndex((item, i) => i !== index && item.id === id);
+    if (duplicateIndex !== -1) {
+      return res.status(400).json({
+        success: false,
+        message: '该id已存在于其他元素中'
+      });
+    }
+
+    // 更新元素：更新对象的 id 和 name 字段
+    data.list[index] = { id, name };
 
     if (writeData(data)) {
       res.json({
@@ -226,11 +252,16 @@ app.put('/api/list', (req, res) => {
       });
     }
 
-    // 验证数组中的元素都是字符串
-    if (!list.every(item => typeof item === 'string')) {
+    // 验证数组中的元素都是对象，且包含 id 和 name 字段（都是字符串）
+    if (!list.every(item => 
+      typeof item === 'object' && 
+      item !== null && 
+      typeof item.id === 'string' && 
+      typeof item.name === 'string'
+    )) {
       return res.status(400).json({
         success: false,
-        message: 'list中的所有元素必须是字符串类型'
+        message: 'list中的所有元素必须是包含 id 和 name 字段的对象（都是字符串类型）'
       });
     }
 

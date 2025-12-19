@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>设备ID管理界面</title>
+    <title>设备管理</title>
     <style>
         * {
             margin: 0;
@@ -13,34 +13,29 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
             min-height: 100vh;
             padding: 20px;
+            color: #333;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            padding: 24px 30px;
+            border-bottom: 1px solid #e0e0e0;
         }
 
         .header h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            opacity: 0.9;
+            font-size: 20px;
+            font-weight: 500;
+            color: #333;
         }
 
         .content {
@@ -48,246 +43,211 @@
         }
 
         .form-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
             margin-bottom: 30px;
         }
 
         .form-section h2 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
             color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5em;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
         }
 
         .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
         }
 
         .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 14px;
-            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-right: 10px;
-            margin-top: 10px;
+            transition: all 0.2s;
+            background: white;
+            color: #333;
+        }
+
+        .btn:hover {
+            background: #f5f5f5;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #333;
             color: white;
+            border-color: #333;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+            background: #555;
         }
 
         .btn-danger {
-            background: #dc3545;
-            color: white;
+            color: #d32f2f;
+            border-color: #d32f2f;
         }
 
         .btn-danger:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+            background: #ffebee;
         }
 
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
+        .btn-success {
+            color: #2e7d32;
+            border-color: #2e7d32;
         }
 
-        .btn-warning:hover {
-            background: #e0a800;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
-        }
-
-        .btn-info {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .btn-info:hover {
-            background: #138496;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .list-section {
-            margin-top: 30px;
+        .btn-success:hover {
+            background: #e8f5e9;
         }
 
         .list-section h2 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
             color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
         }
 
         thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        th, td {
-            padding: 15px;
-            text-align: left;
+            background: #fafafa;
             border-bottom: 1px solid #e0e0e0;
         }
 
+        th, td {
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+
         th {
-            font-weight: 600;
+            font-weight: 500;
+            color: #666;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
         }
 
         tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
+            background: #fafafa;
         }
 
         .empty-state {
             text-align: center;
             padding: 40px;
             color: #999;
-        }
-
-        .empty-state svg {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            opacity: 0.5;
+            font-size: 14px;
         }
 
         .message {
-            padding: 12px 20px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border-radius: 4px;
             margin-bottom: 20px;
+            font-size: 14px;
             display: none;
         }
 
         .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #e8f5e9;
+            color: #2e7d32;
             display: block;
         }
 
         .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #ffebee;
+            color: #c62828;
             display: block;
         }
 
         .loading {
             text-align: center;
             padding: 20px;
-            color: #667eea;
+            color: #666;
+            font-size: 14px;
         }
 
         .action-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .btn-small {
-            padding: 6px 12px;
+            padding: 4px 8px;
             font-size: 12px;
         }
 
         .edit-form {
             display: none;
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 10px;
-            border: 1px solid #ffc107;
+            padding: 12px;
+            background: #fafafa;
+            border-radius: 4px;
+            margin-top: 8px;
         }
 
         .edit-form.active {
             display: block;
         }
 
+        .edit-form .form-row {
+            margin-bottom: 8px;
+        }
+
         .edit-form input {
-            width: calc(100% - 120px);
-            display: inline-block;
-            margin-right: 10px;
+            width: 100%;
         }
 
         @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                border-radius: 8px;
+            .form-row {
+                grid-template-columns: 1fr;
             }
 
             .content {
                 padding: 20px;
             }
 
-            .action-buttons {
-                flex-direction: column;
+            table {
+                font-size: 12px;
             }
 
-            .btn-small {
-                width: 100%;
+            th, td {
+                padding: 8px;
             }
         }
     </style>
@@ -295,8 +255,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 设备ID管理系统</h1>
-            <p>可视化接口调用界面</p>
+            <h1>设备管理</h1>
         </div>
 
         <div class="content">
@@ -305,45 +264,55 @@
 
             <!-- 添加表单区域 -->
             <div class="form-section">
-                <h2>➕ 添加新设备ID</h2>
-                <div class="form-group">
-                    <label for="newItem">设备ID：</label>
-                    <input type="text" id="newItem" placeholder="请输入要添加的设备ID">
+                <h2>添加新设备</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="newId">ID</label>
+                        <input type="text" id="newId" placeholder="请输入设备ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="newName">名称</label>
+                        <input type="text" id="newName" placeholder="请输入设备名称">
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="addItem()">添加设备ID</button>
-                <button class="btn btn-info" onclick="loadList()">🔄 刷新列表</button>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="addItem()">添加</button>
+                    <button class="btn" onclick="loadList()">刷新</button>
+                </div>
             </div>
 
             <!-- 列表显示区域 -->
             <div class="list-section">
-                <h2>📝 设备ID列表</h2>
-                <div class="table-container">
-                    <div id="loading" class="loading" style="display: none;">
-                        加载中...
-                    </div>
-                    <table id="listTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">索引</th>
-                                <th>设备ID</th>
-                                <th style="width: 200px;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="listBody">
-                            <tr>
-                                <td colspan="3" class="empty-state">
-                                    <div>暂无数据，请添加设备ID或刷新列表</div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <h2>设备列表</h2>
+                <div id="loading" class="loading" style="display: none;">
+                    加载中...
                 </div>
+                <table id="listTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">索引</th>
+                            <th>ID（加密后）</th>
+                            <th>原始值</th>
+                            <th>名称</th>
+                            <th style="width: 150px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listBody">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                暂无数据，请添加设备或刷新列表
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
+    <!-- 引入加密工具函数 -->
+    <script src="crypto-utils.js"></script>
     <script>
-        // API基础URL - 根据实际部署情况修改
+        // API基础URL
         const API_BASE_URL = window.location.origin;
 
         // 显示消息提示
@@ -377,31 +346,54 @@
                     if (list.length === 0) {
                         tbodyEl.innerHTML = `
                             <tr>
-                                <td colspan="3" class="empty-state">
-                                    <div>暂无数据，请添加设备ID</div>
+                                <td colspan="5" class="empty-state">
+                                    暂无数据，请添加设备
                                 </td>
                             </tr>
                         `;
                     } else {
-                        tbodyEl.innerHTML = list.map((item, index) => `
+                        // 渲染列表，每个元素包含 id 和 name 字段
+                        // id 是加密后的值，需要通过解密函数获取原始值
+                        tbodyEl.innerHTML = list.map((item, index) => {
+                            // 解密 id 获取原始值
+                            const originalId = typeof decrypt === 'function' ? decrypt(item.id || '') : '';
+                            return `
                             <tr id="row-${index}">
                                 <td>${index}</td>
                                 <td>
-                                    <span id="item-${index}">${escapeHtml(item)}</span>
-                                    <div id="edit-form-${index}" class="edit-form">
-                                        <input type="text" id="edit-input-${index}" value="${escapeHtml(item)}" placeholder="请输入新的设备ID">
-                                        <button class="btn btn-success btn-small" onclick="saveEdit(${index})">保存</button>
-                                        <button class="btn btn-warning btn-small" onclick="cancelEdit(${index})">取消</button>
-                                    </div>
+                                    <span id="item-id-${index}">${escapeHtml(item.id || '')}</span>
+                                </td>
+                                <td>
+                                    <span id="item-original-${index}">${escapeHtml(originalId)}</span>
+                                </td>
+                                <td>
+                                    <span id="item-name-${index}">${escapeHtml(item.name || '')}</span>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-warning btn-small" onclick="editItem(${index})">✏️ 编辑</button>
-                                        <button class="btn btn-danger btn-small" onclick="deleteItem(${index})">🗑️ 删除</button>
+                                        <button class="btn btn-small" onclick="editItem(${index})">编辑</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteItem(${index})">删除</button>
+                                    </div>
+                                    <div id="edit-form-${index}" class="edit-form">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>ID（原始值）</label>
+                                                <input type="text" id="edit-id-${index}" value="${escapeHtml(originalId)}" placeholder="请输入设备ID">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>名称</label>
+                                                <input type="text" id="edit-name-${index}" value="${escapeHtml(item.name || '')}" placeholder="请输入设备名称">
+                                            </div>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-success btn-small" onclick="saveEdit(${index})">保存</button>
+                                            <button class="btn btn-small" onclick="cancelEdit(${index})">取消</button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
-                        `).join('');
+                        `;
+                        }).join('');
                     }
                     showMessage('列表加载成功', 'success');
                 } else {
@@ -411,8 +403,8 @@
                 loadingEl.style.display = 'none';
                 tbodyEl.innerHTML = `
                     <tr>
-                        <td colspan="3" class="empty-state">
-                            <div style="color: #dc3545;">加载失败: ${error.message}</div>
+                        <td colspan="5" class="empty-state">
+                            <div style="color: #c62828;">加载失败: ${error.message}</div>
                         </td>
                     </tr>
                 `;
@@ -420,30 +412,47 @@
             }
         }
 
-        // 添加新设备ID
+        // 添加新设备
         async function addItem() {
-            const inputEl = document.getElementById('newItem');
-            const item = inputEl.value.trim();
+            const idInput = document.getElementById('newId');
+            const nameInput = document.getElementById('newName');
+            const originalId = idInput.value.trim();
+            const name = nameInput.value.trim();
 
-            if (!item) {
+            if (!originalId) {
                 showMessage('请输入设备ID', 'error');
                 return;
             }
 
+            if (!name) {
+                showMessage('请输入设备名称', 'error');
+                return;
+            }
+
+            // 检查加密函数是否可用
+            if (typeof encrypt !== 'function') {
+                showMessage('加密函数未加载，请刷新页面重试', 'error');
+                return;
+            }
+
             try {
-                // 调用POST接口添加设备ID
+                // 对 id 进行加密后再提交
+                const encryptedId = encrypt(originalId);
+                
+                // 调用POST接口添加设备，传递加密后的 id 和 name
                 const response = await fetch(`${API_BASE_URL}/api/list`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ item })
+                    body: JSON.stringify({ id: encryptedId, name })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    inputEl.value = '';
+                    idInput.value = '';
+                    nameInput.value = '';
                     showMessage('添加成功', 'success');
                     // 重新加载列表
                     await loadList();
@@ -455,7 +464,7 @@
             }
         }
 
-        // 编辑设备ID
+        // 编辑设备
         function editItem(index) {
             // 隐藏所有其他编辑表单
             document.querySelectorAll('.edit-form').forEach(form => {
@@ -464,32 +473,48 @@
             
             // 显示当前编辑表单
             const editForm = document.getElementById(`edit-form-${index}`);
-            const itemText = document.getElementById(`item-${index}`);
-            
             editForm.classList.add('active');
-            const inputEl = document.getElementById(`edit-input-${index}`);
-            inputEl.focus();
-            inputEl.select();
+            
+            // 聚焦到ID输入框
+            const idInput = document.getElementById(`edit-id-${index}`);
+            idInput.focus();
+            idInput.select();
         }
 
         // 保存编辑
         async function saveEdit(index) {
-            const inputEl = document.getElementById(`edit-input-${index}`);
-            const newItem = inputEl.value.trim();
+            const idInput = document.getElementById(`edit-id-${index}`);
+            const nameInput = document.getElementById(`edit-name-${index}`);
+            const originalId = idInput.value.trim();
+            const name = nameInput.value.trim();
 
-            if (!newItem) {
+            if (!originalId) {
                 showMessage('请输入设备ID', 'error');
                 return;
             }
 
+            if (!name) {
+                showMessage('请输入设备名称', 'error');
+                return;
+            }
+
+            // 检查加密函数是否可用
+            if (typeof encrypt !== 'function') {
+                showMessage('加密函数未加载，请刷新页面重试', 'error');
+                return;
+            }
+
             try {
-                // 调用PUT接口更新设备ID
+                // 对 id 进行加密后再提交
+                const encryptedId = encrypt(originalId);
+                
+                // 调用PUT接口更新设备，传递加密后的 id 和 name
                 const response = await fetch(`${API_BASE_URL}/api/list/${index}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ item: newItem })
+                    body: JSON.stringify({ id: encryptedId, name })
                 });
 
                 const result = await response.json();
@@ -512,14 +537,14 @@
             editForm.classList.remove('active');
         }
 
-        // 删除设备ID
+        // 删除设备
         async function deleteItem(index) {
-            if (!confirm(`确定要删除索引 ${index} 的设备ID吗？`)) {
+            if (!confirm(`确定要删除索引 ${index} 的设备吗？`)) {
                 return;
             }
 
             try {
-                // 调用DELETE接口删除设备ID
+                // 调用DELETE接口删除设备
                 const response = await fetch(`${API_BASE_URL}/api/list/${index}`, {
                     method: 'DELETE'
                 });
@@ -545,8 +570,14 @@
             return div.innerHTML;
         }
 
-        // 回车键添加设备ID
-        document.getElementById('newItem').addEventListener('keypress', function(e) {
+        // 回车键添加设备
+        document.getElementById('newId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('newName').focus();
+            }
+        });
+
+        document.getElementById('newName').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 addItem();
             }
@@ -559,4 +590,3 @@
     </script>
 </body>
 </html>
-
