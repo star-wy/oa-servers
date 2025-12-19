@@ -232,24 +232,28 @@
             font-size: 12px;
         }
 
-        .edit-form {
-            display: none;
-            padding: 12px;
-            background: #fafafa;
-            border-radius: 4px;
-            margin-top: 8px;
+        /* 内联编辑样式 */
+        .editable-cell {
+            position: relative;
         }
 
-        .edit-form.active {
-            display: block;
-        }
-
-        .edit-form .form-row {
-            margin-bottom: 8px;
-        }
-
-        .edit-form input {
+        .editable-cell input {
             width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .editable-cell input:focus {
+            outline: none;
+            border-color: #333;
+        }
+
+        .edit-buttons {
+            display: flex;
+            gap: 6px;
         }
 
         @media (max-width: 768px) {
@@ -383,32 +387,22 @@
                                 <td>
                                     <span id="item-id-${index}">${escapeHtml(item.id || '')}</span>
                                 </td>
-                                <td>
-                                    <span id="item-original-${index}">${escapeHtml(originalId)}</span>
+                                <td class="editable-cell">
+                                    <span id="item-original-display-${index}">${escapeHtml(originalId)}</span>
+                                    <input type="text" id="item-original-input-${index}" value="${escapeHtml(originalId)}" style="display: none;" placeholder="请输入设备ID">
+                                </td>
+                                <td class="editable-cell">
+                                    <span id="item-name-display-${index}">${escapeHtml(item.name || '')}</span>
+                                    <input type="text" id="item-name-input-${index}" value="${escapeHtml(item.name || '')}" style="display: none;" placeholder="请输入设备名称">
                                 </td>
                                 <td>
-                                    <span id="item-name-${index}">${escapeHtml(item.name || '')}</span>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
+                                    <div id="action-buttons-${index}" class="action-buttons">
                                         <button class="btn btn-small" onclick="editItem(${index})">编辑</button>
                                         <button class="btn btn-danger btn-small" onclick="deleteItem(${index})">删除</button>
                                     </div>
-                                    <div id="edit-form-${index}" class="edit-form">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>ID（原始值）</label>
-                                                <input type="text" id="edit-id-${index}" value="${escapeHtml(originalId)}" placeholder="请输入设备ID">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>名称</label>
-                                                <input type="text" id="edit-name-${index}" value="${escapeHtml(item.name || '')}" placeholder="请输入设备名称">
-                                            </div>
-                                        </div>
-                                        <div class="btn-group">
-                                            <button class="btn btn-success btn-small" onclick="saveEdit(${index})">保存</button>
-                                            <button class="btn btn-small" onclick="cancelEdit(${index})">取消</button>
-                                        </div>
+                                    <div id="edit-buttons-${index}" class="edit-buttons" style="display: none;">
+                                        <button class="btn btn-success btn-small" onclick="saveEdit(${index})">保存</button>
+                                        <button class="btn btn-small" onclick="cancelEdit(${index})">取消</button>
                                     </div>
                                 </td>
                             </tr>
@@ -484,37 +478,77 @@
             }
         }
 
-        // 编辑设备
+        // 编辑设备 - 在原位置显示输入框
         function editItem(index) {
-            // 隐藏所有其他编辑表单
-            document.querySelectorAll('.edit-form').forEach(form => {
-                form.classList.remove('active');
+            // 取消所有其他正在编辑的行
+            cancelAllEdits();
+            
+            // 显示输入框，隐藏文本
+            const originalDisplay = document.getElementById(`item-original-display-${index}`);
+            const originalInput = document.getElementById(`item-original-input-${index}`);
+            const nameDisplay = document.getElementById(`item-name-display-${index}`);
+            const nameInput = document.getElementById(`item-name-input-${index}`);
+            const actionButtons = document.getElementById(`action-buttons-${index}`);
+            const editButtons = document.getElementById(`edit-buttons-${index}`);
+            
+            // 切换显示状态
+            originalDisplay.style.display = 'none';
+            originalInput.style.display = 'block';
+            nameDisplay.style.display = 'none';
+            nameInput.style.display = 'block';
+            actionButtons.style.display = 'none';
+            editButtons.style.display = 'flex';
+            
+            // 聚焦到原始值输入框并选中文本
+            originalInput.focus();
+            originalInput.select();
+            
+            // 保存原始值，用于取消时恢复
+            originalInput.dataset.originalValue = originalInput.value;
+            nameInput.dataset.originalValue = nameInput.value;
+            
+            // 绑定回车键事件
+            bindEnterKeyToSave(index);
+        }
+        
+        // 取消所有编辑状态
+        function cancelAllEdits() {
+            document.querySelectorAll('[id^="item-original-display-"]').forEach(el => {
+                const index = el.id.replace('item-original-display-', '');
+                const display = document.getElementById(`item-original-display-${index}`);
+                const input = document.getElementById(`item-original-input-${index}`);
+                const nameDisplay = document.getElementById(`item-name-display-${index}`);
+                const nameInput = document.getElementById(`item-name-input-${index}`);
+                const actionButtons = document.getElementById(`action-buttons-${index}`);
+                const editButtons = document.getElementById(`edit-buttons-${index}`);
+                
+                if (display && input && nameDisplay && nameInput && actionButtons && editButtons) {
+                    display.style.display = '';
+                    input.style.display = 'none';
+                    nameDisplay.style.display = '';
+                    nameInput.style.display = 'none';
+                    actionButtons.style.display = '';
+                    editButtons.style.display = 'none';
+                }
             });
-            
-            // 显示当前编辑表单
-            const editForm = document.getElementById(`edit-form-${index}`);
-            editForm.classList.add('active');
-            
-            // 聚焦到ID输入框
-            const idInput = document.getElementById(`edit-id-${index}`);
-            idInput.focus();
-            idInput.select();
         }
 
         // 保存编辑
         async function saveEdit(index) {
-            const idInput = document.getElementById(`edit-id-${index}`);
-            const nameInput = document.getElementById(`edit-name-${index}`);
-            const originalId = idInput.value.trim();
+            const originalInput = document.getElementById(`item-original-input-${index}`);
+            const nameInput = document.getElementById(`item-name-input-${index}`);
+            const originalId = originalInput.value.trim();
             const name = nameInput.value.trim();
 
             if (!originalId) {
                 showMessage('请输入设备ID', 'error');
+                originalInput.focus();
                 return;
             }
 
             if (!name) {
                 showMessage('请输入设备名称', 'error');
+                nameInput.focus();
                 return;
             }
 
@@ -551,10 +585,30 @@
             }
         }
 
-        // 取消编辑
+        // 取消编辑 - 恢复原始值并隐藏输入框
         function cancelEdit(index) {
-            const editForm = document.getElementById(`edit-form-${index}`);
-            editForm.classList.remove('active');
+            const originalDisplay = document.getElementById(`item-original-display-${index}`);
+            const originalInput = document.getElementById(`item-original-input-${index}`);
+            const nameDisplay = document.getElementById(`item-name-display-${index}`);
+            const nameInput = document.getElementById(`item-name-input-${index}`);
+            const actionButtons = document.getElementById(`action-buttons-${index}`);
+            const editButtons = document.getElementById(`edit-buttons-${index}`);
+            
+            // 恢复原始值
+            if (originalInput.dataset.originalValue !== undefined) {
+                originalInput.value = originalInput.dataset.originalValue;
+            }
+            if (nameInput.dataset.originalValue !== undefined) {
+                nameInput.value = nameInput.dataset.originalValue;
+            }
+            
+            // 切换显示状态
+            originalDisplay.style.display = '';
+            originalInput.style.display = 'none';
+            nameDisplay.style.display = '';
+            nameInput.style.display = 'none';
+            actionButtons.style.display = '';
+            editButtons.style.display = 'none';
         }
 
         // 删除设备
@@ -622,6 +676,30 @@
                 sessionStorage.removeItem('loginTime');
                 // 跳转到登录页
                 window.location.href = 'login.html';
+            }
+        }
+
+        // 添加回车键支持（动态绑定到输入框）
+        function bindEnterKeyToSave(index) {
+            const originalInput = document.getElementById(`item-original-input-${index}`);
+            const nameInput = document.getElementById(`item-name-input-${index}`);
+            
+            if (originalInput) {
+                originalInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nameInput.focus();
+                    }
+                });
+            }
+            
+            if (nameInput) {
+                nameInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveEdit(index);
+                    }
+                });
             }
         }
 
