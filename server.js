@@ -1,0 +1,278 @@
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// 使用中间件
+app.use(cors()); // 允许跨域请求
+app.use(express.json()); // 解析JSON请求体
+
+// 初始化数据文件（如果不存在）
+function initDataFile() {
+  if (!fs.existsSync(DATA_FILE)) {
+    const initialData = { list: [] };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf8');
+  }
+}
+
+// 读取数据文件
+function readData() {
+  try {
+    const data = fs.readFileSync(DATA_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('读取数据文件失败:', error);
+    return { list: [] };
+  }
+}
+
+// 写入数据文件
+function writeData(data) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('写入数据文件失败:', error);
+    return false;
+  }
+}
+
+// 初始化数据文件
+initDataFile();
+
+// GET接口：获取list
+app.get('/api/list', (req, res) => {
+  try {
+    const data = readData();
+    res.json({
+      success: true,
+      data: data.list,
+      message: '获取list成功'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取list失败',
+      error: error.message
+    });
+  }
+});
+
+// POST接口：添加元素到list
+app.post('/api/list', (req, res) => {
+  try {
+    const { item } = req.body;
+    
+    // 验证输入
+    if (!item || typeof item !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的item（字符串类型）'
+      });
+    }
+
+    const data = readData();
+    
+    // 检查是否已存在（可选：如果需要去重）
+    if (data.list.includes(item)) {
+      return res.status(400).json({
+        success: false,
+        message: '该元素已存在于list中'
+      });
+    }
+
+    // 添加元素
+    data.list.push(item);
+    
+    if (writeData(data)) {
+      res.json({
+        success: true,
+        data: data.list,
+        message: '添加元素成功'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '保存数据失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '添加元素失败',
+      error: error.message
+    });
+  }
+});
+
+// PUT接口：更新list中的元素
+app.put('/api/list/:index', (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+    const { item } = req.body;
+
+    // 验证输入
+    if (isNaN(index)) {
+      return res.status(400).json({
+        success: false,
+        message: '索引必须是数字'
+      });
+    }
+
+    if (!item || typeof item !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的item（字符串类型）'
+      });
+    }
+
+    const data = readData();
+
+    // 检查索引是否有效
+    if (index < 0 || index >= data.list.length) {
+      return res.status(400).json({
+        success: false,
+        message: `索引 ${index} 超出范围，list长度为 ${data.list.length}`
+      });
+    }
+
+    // 更新元素
+    data.list[index] = item;
+
+    if (writeData(data)) {
+      res.json({
+        success: true,
+        data: data.list,
+        message: '更新元素成功'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '保存数据失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '更新元素失败',
+      error: error.message
+    });
+  }
+});
+
+// DELETE接口：删除list中的元素
+app.delete('/api/list/:index', (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+
+    // 验证输入
+    if (isNaN(index)) {
+      return res.status(400).json({
+        success: false,
+        message: '索引必须是数字'
+      });
+    }
+
+    const data = readData();
+
+    // 检查索引是否有效
+    if (index < 0 || index >= data.list.length) {
+      return res.status(400).json({
+        success: false,
+        message: `索引 ${index} 超出范围，list长度为 ${data.list.length}`
+      });
+    }
+
+    // 删除元素
+    const deletedItem = data.list.splice(index, 1)[0];
+
+    if (writeData(data)) {
+      res.json({
+        success: true,
+        data: data.list,
+        deletedItem: deletedItem,
+        message: '删除元素成功'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '保存数据失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '删除元素失败',
+      error: error.message
+    });
+  }
+});
+
+// PUT接口：替换整个list
+app.put('/api/list', (req, res) => {
+  try {
+    const { list } = req.body;
+
+    // 验证输入
+    if (!Array.isArray(list)) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的list（数组类型）'
+      });
+    }
+
+    // 验证数组中的元素都是字符串
+    if (!list.every(item => typeof item === 'string')) {
+      return res.status(400).json({
+        success: false,
+        message: 'list中的所有元素必须是字符串类型'
+      });
+    }
+
+    const data = { list };
+
+    if (writeData(data)) {
+      res.json({
+        success: true,
+        data: data.list,
+        message: '替换list成功'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '保存数据失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '替换list失败',
+      error: error.message
+    });
+  }
+});
+
+// 根路径，返回API说明
+app.get('/', (req, res) => {
+  res.json({
+    message: 'List管理服务API',
+    endpoints: {
+      'GET /api/list': '获取list',
+      'POST /api/list': '添加元素到list',
+      'PUT /api/list': '替换整个list',
+      'PUT /api/list/:index': '更新指定索引的元素',
+      'DELETE /api/list/:index': '删除指定索引的元素'
+    }
+  });
+});
+
+// 启动服务器
+app.listen(PORT, () => {
+  console.log(`服务器运行在 http://localhost:${PORT}`);
+  console.log(`API文档: http://localhost:${PORT}`);
+});
+
