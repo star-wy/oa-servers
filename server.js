@@ -10,6 +10,7 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 // 使用中间件
 app.use(cors()); // 允许跨域请求
 app.use(express.json()); // 解析JSON请求体
+app.use(express.static(__dirname)); // 提供静态文件服务，用于访问HTML界面
 
 // 初始化数据文件（如果不存在）
 function initDataFile() {
@@ -256,23 +257,30 @@ app.put('/api/list', (req, res) => {
   }
 });
 
-// 根路径，返回API说明
+// 根路径，返回HTML界面
 app.get('/', (req, res) => {
-  res.json({
-    message: 'List管理服务API',
-    endpoints: {
-      'GET /api/list': '获取list',
-      'POST /api/list': '添加元素到list',
-      'PUT /api/list': '替换整个list',
-      'PUT /api/list/:index': '更新指定索引的元素',
-      'DELETE /api/list/:index': '删除指定索引的元素'
-    }
-  });
+  // 如果请求的是HTML文件，返回index.html
+  if (req.headers.accept && req.headers.accept.includes('text/html')) {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  } else {
+    // 否则返回API说明（JSON格式）
+    res.json({
+      message: 'List管理服务API',
+      endpoints: {
+        'GET /api/list': '获取list',
+        'POST /api/list': '添加元素到list',
+        'PUT /api/list': '替换整个list',
+        'PUT /api/list/:index': '更新指定索引的元素',
+        'DELETE /api/list/:index': '删除指定索引的元素'
+      }
+    });
+  }
 });
 
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`服务器运行在 http://localhost:${PORT}`);
+  console.log(`可视化界面: http://localhost:${PORT}`);
   console.log(`API文档: http://localhost:${PORT}`);
 });
 

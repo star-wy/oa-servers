@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备ID管理界面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .list-section {
+            margin-top: 30px;
+        }
+
+        .list-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .message {
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .edit-form {
+            display: none;
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #ffc107;
+        }
+
+        .edit-form.active {
+            display: block;
+        }
+
+        .edit-form input {
+            width: calc(100% - 120px);
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn-small {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 设备ID管理系统</h1>
+            <p>可视化接口调用界面</p>
+        </div>
+
+        <div class="content">
+            <!-- 消息提示区域 -->
+            <div id="message" class="message"></div>
+
+            <!-- 添加表单区域 -->
+            <div class="form-section">
+                <h2>➕ 添加新设备ID</h2>
+                <div class="form-group">
+                    <label for="newItem">设备ID：</label>
+                    <input type="text" id="newItem" placeholder="请输入要添加的设备ID">
+                </div>
+                <button class="btn btn-primary" onclick="addItem()">添加设备ID</button>
+                <button class="btn btn-info" onclick="loadList()">🔄 刷新列表</button>
+            </div>
+
+            <!-- 列表显示区域 -->
+            <div class="list-section">
+                <h2>📝 设备ID列表</h2>
+                <div class="table-container">
+                    <div id="loading" class="loading" style="display: none;">
+                        加载中...
+                    </div>
+                    <table id="listTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">索引</th>
+                                <th>设备ID</th>
+                                <th style="width: 200px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listBody">
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    <div>暂无数据，请添加设备ID或刷新列表</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API基础URL - 根据实际部署情况修改
+        const API_BASE_URL = window.location.origin;
+
+        // 显示消息提示
+        function showMessage(text, type = 'success') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            setTimeout(() => {
+                messageEl.className = 'message';
+            }, 3000);
+        }
+
+        // 加载列表数据
+        async function loadList() {
+            const loadingEl = document.getElementById('loading');
+            const tbodyEl = document.getElementById('listBody');
+            
+            loadingEl.style.display = 'block';
+            tbodyEl.innerHTML = '';
+
+            try {
+                // 调用GET接口获取列表
+                const response = await fetch(`${API_BASE_URL}/api/list`);
+                const result = await response.json();
+
+                loadingEl.style.display = 'none';
+
+                if (result.success) {
+                    const list = result.data || [];
+                    
+                    if (list.length === 0) {
+                        tbodyEl.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    <div>暂无数据，请添加设备ID</div>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbodyEl.innerHTML = list.map((item, index) => `
+                            <tr id="row-${index}">
+                                <td>${index}</td>
+                                <td>
+                                    <span id="item-${index}">${escapeHtml(item)}</span>
+                                    <div id="edit-form-${index}" class="edit-form">
+                                        <input type="text" id="edit-input-${index}" value="${escapeHtml(item)}" placeholder="请输入新的设备ID">
+                                        <button class="btn btn-success btn-small" onclick="saveEdit(${index})">保存</button>
+                                        <button class="btn btn-warning btn-small" onclick="cancelEdit(${index})">取消</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-warning btn-small" onclick="editItem(${index})">✏️ 编辑</button>
+                                        <button class="btn btn-danger btn-small" onclick="deleteItem(${index})">🗑️ 删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                    showMessage('列表加载成功', 'success');
+                } else {
+                    throw new Error(result.message || '获取列表失败');
+                }
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                tbodyEl.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="empty-state">
+                            <div style="color: #dc3545;">加载失败: ${error.message}</div>
+                        </td>
+                    </tr>
+                `;
+                showMessage(`加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 添加新设备ID
+        async function addItem() {
+            const inputEl = document.getElementById('newItem');
+            const item = inputEl.value.trim();
+
+            if (!item) {
+                showMessage('请输入设备ID', 'error');
+                return;
+            }
+
+            try {
+                // 调用POST接口添加设备ID
+                const response = await fetch(`${API_BASE_URL}/api/list`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ item })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    inputEl.value = '';
+                    showMessage('添加成功', 'success');
+                    // 重新加载列表
+                    await loadList();
+                } else {
+                    throw new Error(result.message || '添加失败');
+                }
+            } catch (error) {
+                showMessage(`添加失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 编辑设备ID
+        function editItem(index) {
+            // 隐藏所有其他编辑表单
+            document.querySelectorAll('.edit-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            
+            // 显示当前编辑表单
+            const editForm = document.getElementById(`edit-form-${index}`);
+            const itemText = document.getElementById(`item-${index}`);
+            
+            editForm.classList.add('active');
+            const inputEl = document.getElementById(`edit-input-${index}`);
+            inputEl.focus();
+            inputEl.select();
+        }
+
+        // 保存编辑
+        async function saveEdit(index) {
+            const inputEl = document.getElementById(`edit-input-${index}`);
+            const newItem = inputEl.value.trim();
+
+            if (!newItem) {
+                showMessage('请输入设备ID', 'error');
+                return;
+            }
+
+            try {
+                // 调用PUT接口更新设备ID
+                const response = await fetch(`${API_BASE_URL}/api/list/${index}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ item: newItem })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('更新成功', 'success');
+                    // 重新加载列表
+                    await loadList();
+                } else {
+                    throw new Error(result.message || '更新失败');
+                }
+            } catch (error) {
+                showMessage(`更新失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 取消编辑
+        function cancelEdit(index) {
+            const editForm = document.getElementById(`edit-form-${index}`);
+            editForm.classList.remove('active');
+        }
+
+        // 删除设备ID
+        async function deleteItem(index) {
+            if (!confirm(`确定要删除索引 ${index} 的设备ID吗？`)) {
+                return;
+            }
+
+            try {
+                // 调用DELETE接口删除设备ID
+                const response = await fetch(`${API_BASE_URL}/api/list/${index}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('删除成功', 'success');
+                    // 重新加载列表
+                    await loadList();
+                } else {
+                    throw new Error(result.message || '删除失败');
+                }
+            } catch (error) {
+                showMessage(`删除失败: ${error.message}`, 'error');
+            }
+        }
+
+        // HTML转义函数，防止XSS攻击
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 回车键添加设备ID
+        document.getElementById('newItem').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addItem();
+            }
+        });
+
+        // 页面加载时自动获取列表
+        window.addEventListener('DOMContentLoaded', function() {
+            loadList();
+        });
+    </script>
+</body>
+</html>
+
