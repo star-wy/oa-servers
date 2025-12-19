@@ -152,6 +152,25 @@
             background: #e8f5e9;
         }
 
+        /* 状态标签样式 */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-inactive {
+            background: #ffebee;
+            color: #c62828;
+        }
+
         .list-section h2 {
             font-size: 16px;
             font-weight: 500;
@@ -318,12 +337,13 @@
                             <th>ID（加密后）</th>
                             <th>原始值</th>
                             <th>名称</th>
-                            <th style="width: 150px;">操作</th>
+                            <th style="width: 100px;">状态</th>
+                            <th style="width: 200px;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="listBody">
                         <tr>
-                            <td colspan="5" class="empty-state">
+                            <td colspan="6" class="empty-state">
                                 暂无数据，请添加设备或刷新列表
                             </td>
                         </tr>
@@ -370,17 +390,21 @@
                     if (list.length === 0) {
                         tbodyEl.innerHTML = `
                             <tr>
-                                <td colspan="5" class="empty-state">
+                                <td colspan="6" class="empty-state">
                                     暂无数据，请添加设备
                                 </td>
                             </tr>
                         `;
                     } else {
-                        // 渲染列表，每个元素包含 id 和 name 字段
+                        // 渲染列表，每个元素包含 id、name 和 status 字段
                         // id 是加密后的值，需要通过解密函数获取原始值
                         tbodyEl.innerHTML = list.map((item, index) => {
                             // 解密 id 获取原始值
                             const originalId = typeof decrypt === 'function' ? decrypt(item.id || '') : '';
+                            // 获取状态，默认为 active（启用）
+                            const status = item.status || 'active';
+                            const statusText = status === 'active' ? '启用' : '停用';
+                            const statusClass = status === 'active' ? 'status-active' : 'status-inactive';
                             return `
                             <tr id="row-${index}">
                                 <td>${index}</td>
@@ -396,8 +420,14 @@
                                     <input type="text" id="item-name-input-${index}" value="${escapeHtml(item.name || '')}" style="display: none;" placeholder="请输入设备名称">
                                 </td>
                                 <td>
+                                    <span class="status-badge ${statusClass}" id="item-status-${index}">${statusText}</span>
+                                </td>
+                                <td>
                                     <div id="action-buttons-${index}" class="action-buttons">
                                         <button class="btn btn-small" onclick="editItem(${index})">编辑</button>
+                                        <button class="btn ${status === 'active' ? 'btn-danger' : 'btn-success'} btn-small" onclick="toggleStatus(${index})">
+                                            ${status === 'active' ? '停用' : '启用'}
+                                        </button>
                                         <button class="btn btn-danger btn-small" onclick="deleteItem(${index})">删除</button>
                                     </div>
                                     <div id="edit-buttons-${index}" class="edit-buttons" style="display: none;">
@@ -417,7 +447,7 @@
                 loadingEl.style.display = 'none';
                 tbodyEl.innerHTML = `
                     <tr>
-                        <td colspan="5" class="empty-state">
+                        <td colspan="6" class="empty-state">
                             <div style="color: #c62828;">加载失败: ${error.message}</div>
                         </td>
                     </tr>
@@ -609,6 +639,28 @@
             nameInput.style.display = 'none';
             actionButtons.style.display = '';
             editButtons.style.display = 'none';
+        }
+
+        // 切换设备状态（启用/停用）
+        async function toggleStatus(index) {
+            try {
+                // 调用PUT接口切换设备状态
+                const response = await fetch(`${API_BASE_URL}/api/list/${index}/toggle`, {
+                    method: 'PUT'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message || '状态切换成功', 'success');
+                    // 重新加载列表
+                    await loadList();
+                } else {
+                    throw new Error(result.message || '状态切换失败');
+                }
+            } catch (error) {
+                showMessage(`状态切换失败: ${error.message}`, 'error');
+            }
         }
 
         // 删除设备

@@ -46,19 +46,47 @@ function writeData(data) {
 // 初始化数据文件
 initDataFile();
 
-// GET接口：获取list
+// GET接口：获取list（支持查询参数 status=active 来筛选可用设备）
 app.get('/api/list', (req, res) => {
   try {
     const data = readData();
+    let list = data.list;
+    
+    // 如果请求参数中有 status=active，则只返回状态为 active 的设备
+    if (req.query.status === 'active') {
+      list = list.filter(item => (item.status || 'active') === 'active');
+    }
+    
     res.json({
       success: true,
-      data: data.list,
+      data: list,
       message: '获取list成功'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: '获取list失败',
+      error: error.message
+    });
+  }
+});
+
+// GET接口：获取可用的设备列表（只返回状态为 active 的设备）
+app.get('/api/list/active', (req, res) => {
+  try {
+    const data = readData();
+    // 只返回状态为 active 的设备，如果没有 status 字段则默认为 active
+    const activeList = data.list.filter(item => (item.status || 'active') === 'active');
+    
+    res.json({
+      success: true,
+      data: activeList,
+      message: '获取可用设备列表成功'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '获取可用设备列表失败',
       error: error.message
     });
   }
@@ -94,8 +122,8 @@ app.post('/api/list', (req, res) => {
       });
     }
 
-    // 添加元素：创建包含 id 和 name 的对象
-    const newItem = { id, name };
+    // 添加元素：创建包含 id、name 和 status 的对象，默认状态为启用（active）
+    const newItem = { id, name, status: 'active' };
     data.list.push(newItem);
     
     if (writeData(data)) {
@@ -167,8 +195,9 @@ app.put('/api/list/:index', (req, res) => {
       });
     }
 
-    // 更新元素：更新对象的 id 和 name 字段
-    data.list[index] = { id, name };
+    // 更新元素：更新对象的 id 和 name 字段，保留原有的 status 字段（如果存在）
+    const existingStatus = data.list[index]?.status || 'active';
+    data.list[index] = { id, name, status: existingStatus };
 
     if (writeData(data)) {
       res.json({
@@ -239,6 +268,54 @@ app.delete('/api/list/:index', (req, res) => {
   }
 });
 
+// PUT接口：切换设备状态（启用/停用）
+app.put('/api/list/:index/toggle', (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+
+    // 验证输入
+    if (isNaN(index)) {
+      return res.status(400).json({
+        success: false,
+        message: '索引必须是数字'
+      });
+    }
+
+    const data = readData();
+
+    // 检查索引是否有效
+    if (index < 0 || index >= data.list.length) {
+      return res.status(400).json({
+        success: false,
+        message: `索引 ${index} 超出范围，list长度为 ${data.list.length}`
+      });
+    }
+
+    // 切换状态：如果当前是 active 则改为 inactive，否则改为 active
+    const currentStatus = data.list[index].status || 'active';
+    data.list[index].status = currentStatus === 'active' ? 'inactive' : 'active';
+
+    if (writeData(data)) {
+      res.json({
+        success: true,
+        data: data.list[index],
+        message: `设备已${data.list[index].status === 'active' ? '启用' : '停用'}`
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '保存数据失败'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '切换状态失败',
+      error: error.message
+    });
+  }
+});
+
 // PUT接口：替换整个list
 app.put('/api/list', (req, res) => {
   try {
@@ -253,6 +330,7 @@ app.put('/api/list', (req, res) => {
     }
 
     // 验证数组中的元素都是对象，且包含 id 和 name 字段（都是字符串）
+    // status 字段可选，如果不提供则默认为 active
     if (!list.every(item => 
       typeof item === 'object' && 
       item !== null && 
@@ -265,7 +343,13 @@ app.put('/api/list', (req, res) => {
       });
     }
 
-    const data = { list };
+    // 确保每个元素都有 status 字段，如果没有则默认为 active
+    const normalizedList = list.map(item => ({
+      ...item,
+      status: item.status || 'active'
+    }));
+
+    const data = { list: normalizedList };
 
     if (writeData(data)) {
       res.json({
@@ -298,10 +382,12 @@ app.get('/', (req, res) => {
     res.json({
       message: 'List管理服务API',
       endpoints: {
-        'GET /api/list': '获取list',
+        'GET /api/list': '获取list（支持 ?status=active 查询参数）',
+        'GET /api/list/active': '获取可用的设备列表（只返回状态为 active 的设备）',
         'POST /api/list': '添加元素到list',
         'PUT /api/list': '替换整个list',
         'PUT /api/list/:index': '更新指定索引的元素',
+        'PUT /api/list/:index/toggle': '切换指定索引的设备状态（启用/停用）',
         'DELETE /api/list/:index': '删除指定索引的元素'
       }
     });
