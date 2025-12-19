@@ -30,11 +30,30 @@
         .header {
             padding: 24px 30px;
             border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .header h1 {
             font-size: 20px;
             font-weight: 500;
+            color: #333;
+        }
+
+        .header .logout-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header .logout-btn:hover {
+            background: #f5f5f5;
             color: #333;
         }
 
@@ -256,6 +275,7 @@
     <div class="container">
         <div class="header">
             <h1>设备管理</h1>
+            <button class="logout-btn" onclick="logout()">退出登录</button>
         </div>
 
         <div class="content">
@@ -583,9 +603,35 @@
             }
         });
 
-        // 页面加载时自动获取列表
+        // 检查登录状态
+        function checkLogin() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            if (isLoggedIn !== 'true') {
+                // 未登录，跳转到登录页
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                // 清除登录状态
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('loginTime');
+                // 跳转到登录页
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 页面加载时检查登录状态并获取列表
         window.addEventListener('DOMContentLoaded', function() {
-            loadList();
+            // 先检查登录状态
+            if (checkLogin()) {
+                // 已登录，加载列表
+                loadList();
+            }
         });
     </script>
 </body>

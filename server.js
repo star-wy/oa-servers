@@ -288,11 +288,11 @@ app.put('/api/list', (req, res) => {
   }
 });
 
-// 根路径，返回HTML界面
+// 根路径，返回登录页面
 app.get('/', (req, res) => {
-  // 如果请求的是HTML文件，返回index.html
+  // 如果请求的是HTML文件，返回login.html
   if (req.headers.accept && req.headers.accept.includes('text/html')) {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'login.html'));
   } else {
     // 否则返回API说明（JSON格式）
     res.json({
