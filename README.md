@@ -27,7 +27,7 @@
 - ✅ 更新list中的元素
 - ✅ 删除list中的元素
 - ✅ 替换整个list
-- ✅ 数据持久化存储（JSON文件）
+- ✅ 数据持久化存储（支持 LeanCloud 数据库或 JSON 文件）
 
 ## 快速开始
 
@@ -50,6 +50,33 @@ npm run dev
 ```
 
 服务默认运行在 `http://localhost:3000`
+
+## 💾 数据持久化存储
+
+### 方式一：LeanCloud 数据库（推荐）
+
+**优势**：
+- ✅ 国内服务，访问稳定
+- ✅ 免费层：每天 10,000 次 API 请求
+- ✅ 数据永久保存，不会丢失
+- ✅ 适合云平台部署
+
+**配置方法**：查看 [LEANCLOUD_SETUP.md](./LEANCLOUD_SETUP.md) 获取详细配置指南
+
+**快速配置**：
+1. 注册 [LeanCloud](https://leancloud.cn/) 账号（免费）
+2. 创建应用，获取 App ID 和 App Key
+3. 设置环境变量：
+   ```bash
+   LEANCLOUD_APP_ID=你的AppID
+   LEANCLOUD_APP_KEY=你的AppKey
+   ```
+
+### 方式二：文件系统存储（默认）
+
+如果没有配置 LeanCloud，数据将存储在本地 `data.json` 文件中。
+
+**注意**：在云平台上，文件系统存储可能会在重启后丢失数据，建议使用 LeanCloud 数据库。
 
 ## API接口说明
 

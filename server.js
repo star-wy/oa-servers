@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const AV = require('leancloud-storage'); // 引入 LeanCloud SDK
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,14 +13,72 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
 
+// LeanCloud 配置（从环境变量读取）
+// 如果配置了 LeanCloud，则使用数据库存储；否则使用文件系统存储
+const LEANCLOUD_APP_ID = process.env.LEANCLOUD_APP_ID;
+const LEANCLOUD_APP_KEY = process.env.LEANCLOUD_APP_KEY;
+const LEANCLOUD_SERVER_URL = process.env.LEANCLOUD_SERVER_URL; // 可选，用于国内节点
+
+// 判断是否使用 LeanCloud 数据库
+const USE_DATABASE = !!(LEANCLOUD_APP_ID && LEANCLOUD_APP_KEY);
+
 // 使用中间件
 app.use(cors()); // 允许跨域请求
 app.use(express.json()); // 解析JSON请求体
 app.use(express.static(__dirname)); // 提供静态文件服务，用于访问HTML界面
 
-// 初始化数据存储（文件系统）
+// 初始化数据存储（LeanCloud 数据库或文件系统）
 function initDataStorage() {
-  initDataFile();
+  if (USE_DATABASE) {
+    // 初始化 LeanCloud 数据库
+    initLeanCloud();
+  } else {
+    // 初始化文件系统存储
+    initDataFile();
+  }
+}
+
+// 初始化 LeanCloud 数据库
+function initLeanCloud() {
+  try {
+    // 配置 LeanCloud
+    AV.init({
+      appId: LEANCLOUD_APP_ID,
+      appKey: LEANCLOUD_APP_KEY,
+      serverURL: LEANCLOUD_SERVER_URL || 'https://leancloud.cn' // 默认使用国内节点
+    });
+    console.log('✅ LeanCloud 数据库初始化成功');
+    console.log(`应用ID: ${LEANCLOUD_APP_ID}`);
+    
+    // 测试连接：尝试读取或创建数据对象
+    ensureDataObject();
+  } catch (error) {
+    console.error('❌ LeanCloud 数据库初始化失败:', error);
+    console.warn('⚠️  警告: 将回退到文件系统存储');
+  }
+}
+
+// 确保数据对象存在（LeanCloud）
+async function ensureDataObject() {
+  try {
+    const DataObject = AV.Object.extend('ListData');
+    const query = new AV.Query(DataObject);
+    query.equalTo('type', 'main'); // 使用 type 字段来标识主数据对象
+    
+    const result = await query.first();
+    if (!result) {
+      // 如果不存在，创建初始数据对象
+      const dataObj = new DataObject();
+      dataObj.set('type', 'main'); // 使用 type 字段标识
+      dataObj.set('list', []);
+      await dataObj.save();
+      console.log('✅ 已创建初始数据对象');
+    } else {
+      console.log('✅ 数据对象已存在');
+    }
+  } catch (error) {
+    console.error('确保数据对象失败:', error);
+  }
 }
 
 // 初始化数据文件（如果不存在）- 仅用于文件系统模式
@@ -48,43 +107,95 @@ function initDataFile() {
   }
 }
 
-// 读取数据（从文件系统）
-function readData() {
-  try {
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('读取数据文件失败:', error);
-    return { list: [] };
+// 读取数据（从 LeanCloud 数据库或文件系统）
+async function readData() {
+  if (USE_DATABASE) {
+    // 从 LeanCloud 数据库读取
+    try {
+      const DataObject = AV.Object.extend('ListData');
+      const query = new AV.Query(DataObject);
+      query.equalTo('type', 'main'); // 使用 type 字段查询
+      
+      const result = await query.first();
+      if (result) {
+        const list = result.get('list') || [];
+        return { list };
+      } else {
+        // 如果不存在，返回空数据
+        return { list: [] };
+      }
+    } catch (error) {
+      console.error('从数据库读取数据失败:', error);
+      return { list: [] };
+    }
+  } else {
+    // 从文件系统读取
+    try {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('读取数据文件失败:', error);
+      return { list: [] };
+    }
   }
 }
 
-// 写入数据（到文件系统）
-function writeData(data) {
-  try {
-    // 确保数据目录存在
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+// 写入数据（到 LeanCloud 数据库或文件系统）
+async function writeData(data) {
+  if (USE_DATABASE) {
+    // 写入到 LeanCloud 数据库
+    try {
+      const DataObject = AV.Object.extend('ListData');
+      const query = new AV.Query(DataObject);
+      query.equalTo('type', 'main'); // 使用 type 字段查询
+      
+      const result = await query.first();
+      if (result) {
+        // 更新现有对象
+        result.set('list', data.list || []);
+        await result.save();
+        console.log('✅ 数据已保存到 LeanCloud 数据库');
+        return true;
+      } else {
+        // 创建新对象
+        const dataObj = new DataObject();
+        dataObj.set('type', 'main'); // 使用 type 字段标识
+        dataObj.set('list', data.list || []);
+        await dataObj.save();
+        console.log('✅ 数据已创建并保存到 LeanCloud 数据库');
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ 写入数据库失败:', error);
+      return false;
     }
-    
-    // 写入数据文件，使用同步写入确保数据立即保存
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-    console.log(`数据已保存到: ${DATA_FILE}`);
-    return true;
-  } catch (error) {
-    console.error('写入数据文件失败:', error);
-    console.error('数据文件路径:', DATA_FILE);
-    console.error('错误详情:', error.message);
-    return false;
+  } else {
+    // 写入到文件系统
+    try {
+      // 确保数据目录存在
+      const dir = path.dirname(DATA_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      // 写入数据文件，使用同步写入确保数据立即保存
+      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+      console.log(`数据已保存到: ${DATA_FILE}`);
+      return true;
+    } catch (error) {
+      console.error('写入数据文件失败:', error);
+      console.error('数据文件路径:', DATA_FILE);
+      console.error('错误详情:', error.message);
+      return false;
+    }
   }
 }
 
 
 // GET接口：获取list（支持查询参数 status=active 来筛选可用设备）
-app.get('/api/list', (req, res) => {
+app.get('/api/list', async (req, res) => {
   try {
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
     let list = data.list;
     
     // 如果请求参数中有 status=active，则只返回状态为 active 的设备
@@ -107,9 +218,9 @@ app.get('/api/list', (req, res) => {
 });
 
 // GET接口：获取可用的设备列表（只返回状态为 active 的设备）
-app.get('/api/list/active', (req, res) => {
+app.get('/api/list/active', async (req, res) => {
   try {
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
     // 只返回状态为 active 的设备，如果没有 status 字段则默认为 active
     const activeList = data.list.filter(item => (item.status || 'active') === 'active');
     
@@ -128,7 +239,7 @@ app.get('/api/list/active', (req, res) => {
 });
 
 // POST接口：添加元素到list
-app.post('/api/list', (req, res) => {
+app.post('/api/list', async (req, res) => {
   try {
     const { id, name } = req.body;
     
@@ -147,7 +258,7 @@ app.post('/api/list', (req, res) => {
       });
     }
 
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
     
     // 检查是否已存在相同的id（可选：如果需要去重）
     if (data.list.some(item => item.id === id)) {
@@ -160,9 +271,9 @@ app.post('/api/list', (req, res) => {
     // 添加元素：创建包含 id、name 和 status 的对象，默认状态为启用（active）
     const newItem = { id, name, status: 'active' };
     
-    // 添加到数组后保存到文件系统
+    // 添加到数组后保存到数据库或文件系统
     data.list.push(newItem);
-    const success = writeData(data);
+    const success = await writeData(data); // 使用 await 等待异步写入
     if (success) {
       res.json({
         success: true,
@@ -185,7 +296,7 @@ app.post('/api/list', (req, res) => {
 });
 
 // PUT接口：更新list中的元素
-app.put('/api/list/:index', (req, res) => {
+app.put('/api/list/:index', async (req, res) => {
   try {
     const index = parseInt(req.params.index);
     const { id, name } = req.body;
@@ -213,7 +324,7 @@ app.put('/api/list/:index', (req, res) => {
       });
     }
 
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
 
     // 检查索引是否有效
     if (index < 0 || index >= data.list.length) {
@@ -236,9 +347,9 @@ app.put('/api/list/:index', (req, res) => {
     const existingStatus = data.list[index]?.status || 'active';
     const updatedItem = { id, name, status: existingStatus };
     
-    // 更新数组后保存到文件系统
+    // 更新数组后保存到数据库或文件系统
     data.list[index] = updatedItem;
-    const success = writeData(data);
+    const success = await writeData(data); // 使用 await 等待异步写入
     if (success) {
       res.json({
         success: true,
@@ -261,7 +372,7 @@ app.put('/api/list/:index', (req, res) => {
 });
 
 // DELETE接口：删除list中的元素
-app.delete('/api/list/:index', (req, res) => {
+app.delete('/api/list/:index', async (req, res) => {
   try {
     const index = parseInt(req.params.index);
 
@@ -273,7 +384,7 @@ app.delete('/api/list/:index', (req, res) => {
       });
     }
 
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
 
     // 检查索引是否有效
     if (index < 0 || index >= data.list.length) {
@@ -286,9 +397,9 @@ app.delete('/api/list/:index', (req, res) => {
     // 删除元素
     const deletedItem = data.list[index];
     
-    // 从数组删除后保存到文件系统
+    // 从数组删除后保存到数据库或文件系统
     data.list.splice(index, 1);
-    const success = writeData(data);
+    const success = await writeData(data); // 使用 await 等待异步写入
     if (success) {
       res.json({
         success: true,
@@ -312,7 +423,7 @@ app.delete('/api/list/:index', (req, res) => {
 });
 
 // PUT接口：切换设备状态（启用/停用）
-app.put('/api/list/:index/toggle', (req, res) => {
+app.put('/api/list/:index/toggle', async (req, res) => {
   try {
     const index = parseInt(req.params.index);
 
@@ -324,7 +435,7 @@ app.put('/api/list/:index/toggle', (req, res) => {
       });
     }
 
-    const data = readData();
+    const data = await readData(); // 使用 await 等待异步读取
 
     // 检查索引是否有效
     if (index < 0 || index >= data.list.length) {
@@ -339,8 +450,8 @@ app.put('/api/list/:index/toggle', (req, res) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     data.list[index].status = newStatus;
 
-    // 更新数组后保存到文件系统
-    const success = writeData(data);
+    // 更新数组后保存到数据库或文件系统
+    const success = await writeData(data); // 使用 await 等待异步写入
     if (success) {
       res.json({
         success: true,
@@ -363,7 +474,7 @@ app.put('/api/list/:index/toggle', (req, res) => {
 });
 
 // PUT接口：替换整个list
-app.put('/api/list', (req, res) => {
+app.put('/api/list', async (req, res) => {
   try {
     const { list } = req.body;
 
@@ -397,8 +508,8 @@ app.put('/api/list', (req, res) => {
 
     const data = { list: normalizedList };
 
-    // 保存到文件系统
-    const success = writeData(data);
+    // 保存到数据库或文件系统
+    const success = await writeData(data); // 使用 await 等待异步写入
     if (success) {
       res.json({
         success: true,
@@ -444,18 +555,25 @@ app.get('/', (req, res) => {
 
 // 启动服务器
 function startServer() {
-  // 初始化数据存储（文件系统）
+  // 初始化数据存储（LeanCloud 数据库或文件系统）
   initDataStorage();
   
   app.listen(PORT, () => {
     console.log(`服务器运行在 http://localhost:${PORT}`);
     console.log(`可视化界面: http://localhost:${PORT}`);
     console.log(`API文档: http://localhost:${PORT}`);
-    console.log(`数据文件路径: ${DATA_FILE}`);
-    console.log(`数据目录: ${DATA_DIR}`);
-    console.log('✅ 数据存储在文件系统中');
-    console.warn('⚠️  警告: 在 Render 等云平台上，数据存储在文件系统可能会在重启后丢失！');
-    console.warn('💡 建议: 在 Render 控制台配置持久化磁盘，并设置环境变量 DATA_DIR');
+    
+    if (USE_DATABASE) {
+      console.log('✅ 数据存储在 LeanCloud 数据库中（持久化）');
+      console.log(`应用ID: ${LEANCLOUD_APP_ID}`);
+    } else {
+      console.log(`数据文件路径: ${DATA_FILE}`);
+      console.log(`数据目录: ${DATA_DIR}`);
+      console.log('✅ 数据存储在文件系统中');
+      console.warn('⚠️  警告: 在 Render 等云平台上，数据存储在文件系统可能会在重启后丢失！');
+      console.warn('💡 建议: 配置 LeanCloud 数据库实现持久化存储');
+      console.warn('💡 或: 在 Render 控制台配置持久化磁盘，并设置环境变量 DATA_DIR');
+    }
   });
 }
 
