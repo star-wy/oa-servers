@@ -62,22 +62,40 @@ function initLeanCloud() {
 async function ensureDataObject() {
   try {
     const DataObject = AV.Object.extend('ListData');
+    
+    // 先尝试查询是否存在
     const query = new AV.Query(DataObject);
     query.equalTo('type', 'main'); // 使用 type 字段来标识主数据对象
     
-    const result = await query.first();
+    let result;
+    try {
+      result = await query.first();
+    } catch (queryError) {
+      // 如果查询失败（可能是类不存在），直接创建新对象
+      // LeanCloud 会在第一次保存时自动创建类
+      if (queryError.code === 101 || queryError.code === 404) {
+        // 101: 查询结果不存在, 404: 类不存在
+        result = null;
+      } else {
+        throw queryError; // 其他错误继续抛出
+      }
+    }
+    
     if (!result) {
       // 如果不存在，创建初始数据对象
+      // 注意：第一次保存到不存在的类时，LeanCloud 会自动创建该类
       const dataObj = new DataObject();
       dataObj.set('type', 'main'); // 使用 type 字段标识
       dataObj.set('list', []);
       await dataObj.save();
-      console.log('✅ 已创建初始数据对象');
+      console.log('✅ 已创建初始数据对象和 ListData 类');
     } else {
       console.log('✅ 数据对象已存在');
     }
   } catch (error) {
+    // 如果创建失败，记录错误但不阻止服务器启动
     console.error('确保数据对象失败:', error);
+    console.warn('⚠️  数据对象将在首次写入时自动创建');
   }
 }
 
@@ -116,7 +134,18 @@ async function readData() {
       const query = new AV.Query(DataObject);
       query.equalTo('type', 'main'); // 使用 type 字段查询
       
-      const result = await query.first();
+      let result;
+      try {
+        result = await query.first();
+      } catch (queryError) {
+        // 如果类不存在（404），返回空数据
+        if (queryError.code === 101 || queryError.code === 404) {
+          // 101: 查询结果不存在, 404: 类不存在
+          return { list: [] };
+        }
+        throw queryError; // 其他错误继续抛出
+      }
+      
       if (result) {
         const list = result.get('list') || [];
         return { list };
@@ -149,7 +178,20 @@ async function writeData(data) {
       const query = new AV.Query(DataObject);
       query.equalTo('type', 'main'); // 使用 type 字段查询
       
-      const result = await query.first();
+      let result;
+      try {
+        result = await query.first();
+      } catch (queryError) {
+        // 如果类不存在（404），result 设为 null，后续会创建新对象
+        // LeanCloud 会在第一次保存时自动创建类
+        if (queryError.code === 101 || queryError.code === 404) {
+          // 101: 查询结果不存在, 404: 类不存在
+          result = null;
+        } else {
+          throw queryError; // 其他错误继续抛出
+        }
+      }
+      
       if (result) {
         // 更新现有对象
         result.set('list', data.list || []);
@@ -157,12 +199,12 @@ async function writeData(data) {
         console.log('✅ 数据已保存到 LeanCloud 数据库');
         return true;
       } else {
-        // 创建新对象
+        // 创建新对象（如果类不存在，LeanCloud 会自动创建类）
         const dataObj = new DataObject();
         dataObj.set('type', 'main'); // 使用 type 字段标识
         dataObj.set('list', data.list || []);
         await dataObj.save();
-        console.log('✅ 数据已创建并保存到 LeanCloud 数据库');
+        console.log('✅ 数据已创建并保存到 LeanCloud 数据库（类已自动创建）');
         return true;
       }
     } catch (error) {
