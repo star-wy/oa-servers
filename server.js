@@ -35,7 +35,23 @@ async function initMongoDB() {
   
   try {
     const { MongoClient } = require('mongodb');
-    mongoClient = new MongoClient(MONGODB_URI);
+    
+    // 配置 MongoDB 连接选项，解决 SSL/TLS 连接问题
+    // 对于 MongoDB Atlas 等云服务，需要启用 TLS/SSL 连接
+    const clientOptions = {
+      // 启用 TLS/SSL 连接（MongoDB Atlas 等云服务需要）
+      tls: true,
+      // 允许无效证书（仅用于开发环境，生产环境应使用有效证书）
+      // 如果您的 MongoDB 服务有有效的 SSL 证书，可以移除此选项
+      tlsAllowInvalidCertificates: true,
+      // 设置连接超时时间（毫秒）
+      serverSelectionTimeoutMS: 5000,
+      // 设置连接池大小
+      maxPoolSize: 10,
+    };
+    
+    // 创建 MongoDB 客户端，传入连接选项
+    mongoClient = new MongoClient(MONGODB_URI, clientOptions);
     await mongoClient.connect();
     db = mongoClient.db(DB_NAME);
     console.log('MongoDB 连接成功');
