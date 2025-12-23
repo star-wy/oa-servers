@@ -56,7 +56,56 @@ require('dotenv').config();
 
 #### 方式二：云平台部署（推荐）
 
-在云平台（如 Render、Railway、Vercel）的环境变量设置中添加：
+##### 2.1 Netlify 环境变量配置
+
+**步骤：**
+
+1. **登录 Netlify 控制台**
+   - 访问 [Netlify 官网](https://www.netlify.com/)
+   - 使用 GitHub 账号登录
+
+2. **进入站点设置**
+   - 在 Netlify 控制台，选择你的站点
+   - 点击左侧菜单的 **"Site settings"**（站点设置）
+
+3. **配置环境变量**
+   - 在设置页面，找到 **"Environment variables"**（环境变量）部分
+   - 点击 **"Add variable"**（添加变量）按钮
+   - 依次添加以下三个环境变量：
+
+   **必需的环境变量：**
+   - **Key**: `LEANCLOUD_APP_ID`
+     **Value**: 你的 LeanCloud App ID
+   
+   - **Key**: `LEANCLOUD_APP_KEY`
+     **Value**: 你的 LeanCloud App Key
+
+   **可选的环境变量：**
+   - **Key**: `LEANCLOUD_SERVER_URL`
+     **Value**: `https://leancloud.cn`（默认值，通常不需要修改）
+
+4. **保存并重新部署**
+   - 添加完所有环境变量后，点击 **"Save"**（保存）
+   - 环境变量会在下次部署时生效
+   - 如果需要立即生效，可以点击 **"Trigger deploy"**（触发部署）→ **"Deploy site"**（部署站点）
+
+**配置示例：**
+
+```
+LEANCLOUD_APP_ID=你的AppID
+LEANCLOUD_APP_KEY=你的AppKey
+LEANCLOUD_SERVER_URL=https://leancloud.cn
+```
+
+**注意事项：**
+- ✅ 环境变量区分大小写，请确保变量名完全正确
+- ✅ 不要在环境变量值前后添加引号
+- ✅ 修改环境变量后需要重新部署才能生效
+- ✅ 可以在不同环境（Production、Deploy previews、Branch deploys）中设置不同的环境变量
+
+##### 2.2 其他云平台（Render、Railway、Vercel）
+
+在云平台的环境变量设置中添加：
 
 - `LEANCLOUD_APP_ID` = 你的 App ID
 - `LEANCLOUD_APP_KEY` = 你的 App Key

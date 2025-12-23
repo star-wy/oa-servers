@@ -1,0 +1,41 @@
+# Netlify 部署配置文件
+# 用于配置 Netlify Functions 和构建设置
+
+[build]
+  # 构建命令：安装依赖
+  command = "npm install"
+  # 发布目录（Netlify Functions 不需要发布目录，但需要指定）
+  publish = "."
+
+# Netlify Functions 配置
+# 注意：Express 应用在 Netlify 上需要使用 serverless function 方式运行
+# 如果直接使用 Express，可能需要使用 @netlify/functions 适配器
+[build.functions]
+  # Functions 目录（可选，Netlify 会自动检测）
+  directory = "."
+
+# 重定向规则（可选）
+# 将所有请求重定向到 Netlify Function
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+# 环境变量配置说明
+# ⚠️ 重要：需要在 Netlify 控制台的 "Site settings" -> "Environment variables" 中配置以下环境变量：
+# 
+# 必需的环境变量：
+# - LEANCLOUD_APP_ID: LeanCloud 应用 ID（必需）
+# - LEANCLOUD_APP_KEY: LeanCloud 应用 Key（必需）
+# 
+# 可选的环境变量：
+# - LEANCLOUD_SERVER_URL: LeanCloud 服务器地址（可选，默认为 https://leancloud.cn）
+#
+# 配置步骤：
+# 1. 登录 Netlify 控制台
+# 2. 选择你的站点 → "Site settings" → "Environment variables"
+# 3. 点击 "Add variable" 添加上述环境变量
+# 4. 保存后重新部署站点
+#
+# 详细说明请查看：NETLIFY_DEPLOY.md
+
