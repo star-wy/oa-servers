@@ -6,13 +6,10 @@
   command = "npm install"
   # 发布目录（Netlify Functions 不需要发布目录，但需要指定）
   publish = "."
-
-# Netlify Functions 配置
-# 注意：Express 应用在 Netlify 上需要使用 serverless function 方式运行
-# 如果直接使用 Express，可能需要使用 @netlify/functions 适配器
-[build.functions]
-  # Functions 目录（可选，Netlify 会自动检测）
-  directory = "."
+  # Functions 目录（如果使用 Netlify Functions）
+  # 注意：Express 应用在 Netlify 上需要使用 serverless function 方式运行
+  # 如果直接使用 Express，可能需要使用 @netlify/functions 适配器
+  # functions = "netlify/functions"
 
 # 重定向规则（可选）
 # 将所有请求重定向到 Netlify Function
