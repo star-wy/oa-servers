@@ -36,6 +36,11 @@ git push -u origin main
    - **Publish directory**: `.`（留空或使用根目录）
    - 点击 **"Deploy site"**
 
+**重要说明：**
+- 本项目已经配置为 Netlify Functions，Express 应用会自动包装为 serverless function
+- 确保项目包含 `netlify/functions/server.js` 文件和 `netlify.toml` 配置文件
+- 如果遇到 404 错误，请检查这些文件是否存在
+
 5. **等待部署完成**
    - Netlify 会自动检测 Node.js 项目并部署
    - 部署完成后会显示一个 URL，例如：`https://your-project.netlify.app`
@@ -122,12 +127,20 @@ Netlify 允许为不同环境设置不同的环境变量：
 
 ## ⚠️ 注意事项
 
-### 1. Netlify Functions 限制
+### 1. Netlify Functions 配置（已自动配置）
 
-Netlify 主要支持 Serverless Functions，对于 Express 应用可能需要特殊配置：
+本项目已经配置为使用 Netlify Functions：
 
-- 如果使用 Netlify Functions，需要将 Express 应用包装为 serverless function
-- 或者使用 `@netlify/functions` 适配器
+- ✅ Express 应用已包装为 Netlify Function（`netlify/functions/server.js`）
+- ✅ 使用 `serverless-http` 将 Express 应用转换为 serverless function
+- ✅ 所有请求会自动重定向到 `/.netlify/functions/server`
+- ✅ 配置文件 `netlify.toml` 已正确设置
+
+**如果遇到 404 错误，请检查：**
+1. `netlify/functions/server.js` 文件是否存在
+2. `netlify.toml` 配置是否正确
+3. `package.json` 中是否包含 `serverless-http` 依赖
+4. 部署日志中是否有错误信息
 
 ### 2. 环境变量生效时间
 
@@ -149,6 +162,43 @@ Netlify 主要支持 Serverless Functions，对于 Express 应用可能需要特
 
 ## 🔧 故障排查
 
+### 问题：API 请求返回 404 ⚠️ 常见问题
+
+**原因：**
+Netlify 不能直接运行 Express 应用，需要将 Express 应用包装为 Netlify Function。
+
+**解决方案：**
+
+1. **检查必要文件是否存在**
+   - ✅ `netlify/functions/server.js` - Netlify Function 包装文件
+   - ✅ `netlify.toml` - Netlify 配置文件
+   - ✅ `package.json` 中包含 `serverless-http` 依赖
+
+2. **确认 netlify.toml 配置正确**
+   ```toml
+   [build]
+     functions = "netlify/functions"
+   
+   [[redirects]]
+     from = "/*"
+     to = "/.netlify/functions/server"
+     status = 200
+   ```
+
+3. **检查部署日志**
+   - 在 Netlify 控制台 → "Deploys" → 选择最新部署
+   - 查看 "Deploy log" 和 "Function logs"
+   - 确认没有构建错误
+
+4. **重新部署**
+   - 如果文件都正确，尝试重新部署
+   - 点击 "Deploys" → "Trigger deploy" → "Deploy site"
+
+5. **验证 Function 是否创建**
+   - 在 Netlify 控制台 → "Functions"
+   - 应该能看到 `server` function
+   - 如果看不到，说明构建失败或配置错误
+
 ### 问题：环境变量未生效
 
 **解决方案：**
@@ -163,13 +213,6 @@ Netlify 主要支持 Serverless Functions，对于 Express 应用可能需要特
 2. 确认 App ID 和 App Key 是否正确
 3. 查看 Netlify 函数日志，检查错误信息
 4. 确认 LeanCloud 应用已激活
-
-### 问题：API 请求返回 404
-
-**解决方案：**
-1. 检查 Netlify Functions 配置
-2. 确认路由配置正确
-3. 查看函数日志，检查是否有错误
 
 ## 📚 相关文档
 

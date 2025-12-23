@@ -619,6 +619,14 @@ function startServer() {
   });
 }
 
-// 启动服务器
-startServer();
+// 导出 app 以便在 Netlify Functions 中使用
+// 如果直接运行此文件（如本地开发），则启动服务器
+// 如果作为模块导入（如 Netlify Function），则不启动服务器
+if (require.main === module) {
+  // 直接运行此文件时启动服务器（本地开发）
+  startServer();
+}
+
+// 导出 app 和初始化函数，供 Netlify Functions 使用
+module.exports = { app, initDataStorage };
 
