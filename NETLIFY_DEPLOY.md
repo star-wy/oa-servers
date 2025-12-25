@@ -114,6 +114,8 @@ curl -X POST https://your-project.netlify.app/api/list \
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
 | `LEANCLOUD_SERVER_URL` | LeanCloud 服务器地址 | `https://leancloud.cn` |
+| `LEANCLOUD_TIMEOUT` | LeanCloud 请求超时时间（毫秒） | `30000` (30秒) |
+| `LEANCLOUD_RETRY_COUNT` | LeanCloud 请求重试次数 | `3` |
 
 ### 环境变量作用域（Scopes）
 
@@ -208,11 +210,42 @@ Netlify 不能直接运行 Express 应用，需要将 Express 应用包装为 Ne
 
 ### 问题：LeanCloud 连接失败
 
+**常见错误：**
+- `ETIMEDOUT` - 连接超时
+- `ECONNRESET` - 连接重置
+- `ENOTFOUND` - DNS 解析失败
+
 **解决方案：**
-1. 检查环境变量是否正确配置
-2. 确认 App ID 和 App Key 是否正确
-3. 查看 Netlify 函数日志，检查错误信息
-4. 确认 LeanCloud 应用已激活
+
+1. **检查环境变量是否正确配置**
+   - 确认 `LEANCLOUD_APP_ID` 和 `LEANCLOUD_APP_KEY` 已正确设置
+   - 确认环境变量作用域设置为 "All scopes"
+
+2. **确认 App ID 和 App Key 是否正确**
+   - 在 LeanCloud 控制台 → 设置 → 应用凭证中验证
+
+3. **查看 Netlify 函数日志**
+   - 在 Netlify 控制台 → "Functions" → 选择函数 → 查看日志
+   - 检查是否有详细的错误信息
+
+4. **确认 LeanCloud 应用已激活**
+   - 在 LeanCloud 控制台确认应用状态为"运行中"
+
+5. **配置超时和重试（已自动处理）**
+   - 代码已自动包含超时和重试机制
+   - 默认超时：30秒
+   - 默认重试：3次
+   - 可通过环境变量自定义：
+     - `LEANCLOUD_TIMEOUT`: 超时时间（毫秒），默认 30000
+     - `LEANCLOUD_RETRY_COUNT`: 重试次数，默认 3
+
+6. **如果是临时网络问题**
+   - 代码会自动重试，通常可以自动恢复
+   - 如果持续失败，可能是 LeanCloud 服务暂时不可用，等待一段时间后重试
+
+7. **检查 LeanCloud 服务状态**
+   - 访问 [LeanCloud 状态页面](https://status.leancloud.cn/) 查看服务状态
+   - 如果 LeanCloud 服务异常，需要等待服务恢复
 
 ## 📚 相关文档
 

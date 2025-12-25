@@ -19,6 +19,14 @@ const LEANCLOUD_APP_ID = process.env.LEANCLOUD_APP_ID;
 const LEANCLOUD_APP_KEY = process.env.LEANCLOUD_APP_KEY;
 const LEANCLOUD_SERVER_URL = process.env.LEANCLOUD_SERVER_URL; // 可选，用于国内节点
 
+// LeanCloud 请求超时配置（毫秒）
+// 默认 30 秒，可以通过环境变量 LEANCLOUD_TIMEOUT 自定义
+const LEANCLOUD_TIMEOUT = parseInt(process.env.LEANCLOUD_TIMEOUT) || 30000; // 30秒
+
+// LeanCloud 请求重试配置
+// 默认重试 3 次，可以通过环境变量 LEANCLOUD_RETRY_COUNT 自定义
+const LEANCLOUD_RETRY_COUNT = parseInt(process.env.LEANCLOUD_RETRY_COUNT) || 3;
+
 // 判断是否使用 LeanCloud 数据库
 const USE_DATABASE = !!(LEANCLOUD_APP_ID && LEANCLOUD_APP_KEY);
 
@@ -49,6 +57,8 @@ function initLeanCloud() {
     });
     console.log('✅ LeanCloud 数据库初始化成功');
     console.log(`应用ID: ${LEANCLOUD_APP_ID}`);
+    console.log(`请求超时: ${LEANCLOUD_TIMEOUT}ms`);
+    console.log(`重试次数: ${LEANCLOUD_RETRY_COUNT}`);
     
     // 测试连接：尝试读取或创建数据对象
     ensureDataObject();
@@ -61,37 +71,40 @@ function initLeanCloud() {
 // 确保数据对象存在（LeanCloud）
 async function ensureDataObject() {
   try {
-    const DataObject = AV.Object.extend('ListData');
-    
-    // 先尝试查询是否存在
-    const query = new AV.Query(DataObject);
-    query.equalTo('type', 'main'); // 使用 type 字段来标识主数据对象
-    
-    let result;
-    try {
-      result = await query.first();
-    } catch (queryError) {
-      // 如果查询失败（可能是类不存在），直接创建新对象
-      // LeanCloud 会在第一次保存时自动创建类
-      if (queryError.code === 101 || queryError.code === 404) {
-        // 101: 查询结果不存在, 404: 类不存在
-        result = null;
-      } else {
-        throw queryError; // 其他错误继续抛出
+    // 使用带超时和重试的包装函数
+    await withTimeoutAndRetry(async () => {
+      const DataObject = AV.Object.extend('ListData');
+      
+      // 先尝试查询是否存在
+      const query = new AV.Query(DataObject);
+      query.equalTo('type', 'main'); // 使用 type 字段来标识主数据对象
+      
+      let result;
+      try {
+        result = await query.first();
+      } catch (queryError) {
+        // 如果查询失败（可能是类不存在），直接创建新对象
+        // LeanCloud 会在第一次保存时自动创建类
+        if (queryError.code === 101 || queryError.code === 404) {
+          // 101: 查询结果不存在, 404: 类不存在
+          result = null;
+        } else {
+          throw queryError; // 其他错误继续抛出
+        }
       }
-    }
-    
-    if (!result) {
-      // 如果不存在，创建初始数据对象
-      // 注意：第一次保存到不存在的类时，LeanCloud 会自动创建该类
-      const dataObj = new DataObject();
-      dataObj.set('type', 'main'); // 使用 type 字段标识
-      dataObj.set('list', []);
-      await dataObj.save();
-      console.log('✅ 已创建初始数据对象和 ListData 类');
-    } else {
-      console.log('✅ 数据对象已存在');
-    }
+      
+      if (!result) {
+        // 如果不存在，创建初始数据对象
+        // 注意：第一次保存到不存在的类时，LeanCloud 会自动创建该类
+        const dataObj = new DataObject();
+        dataObj.set('type', 'main'); // 使用 type 字段标识
+        dataObj.set('list', []);
+        await dataObj.save();
+        console.log('✅ 已创建初始数据对象和 ListData 类');
+      } else {
+        console.log('✅ 数据对象已存在');
+      }
+    }, '初始化数据对象', 2); // 初始化时只重试2次，避免启动时间过长
   } catch (error) {
     // 如果创建失败，记录错误但不阻止服务器启动
     console.error('确保数据对象失败:', error);
@@ -125,36 +138,89 @@ function initDataFile() {
   }
 }
 
+// 带超时和重试的 LeanCloud 请求包装函数
+// 用于处理网络超时和临时连接问题
+async function withTimeoutAndRetry(operation, operationName, retryCount = LEANCLOUD_RETRY_COUNT) {
+  // 创建超时 Promise
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`操作超时: ${operationName} 在 ${LEANCLOUD_TIMEOUT}ms 内未完成`));
+    }, LEANCLOUD_TIMEOUT);
+  });
+
+  // 执行操作，带重试机制
+  let lastError;
+  for (let attempt = 1; attempt <= retryCount; attempt++) {
+    try {
+      // 使用 Promise.race 实现超时控制
+      const result = await Promise.race([operation(), timeoutPromise]);
+      if (attempt > 1) {
+        console.log(`✅ ${operationName} 在第 ${attempt} 次尝试后成功`);
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      const isTimeout = error.message && error.message.includes('超时');
+      const isNetworkError = error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ENOTFOUND';
+      
+      // 如果是超时或网络错误，且还有重试机会，则重试
+      if ((isTimeout || isNetworkError) && attempt < retryCount) {
+        const waitTime = Math.min(1000 * attempt, 5000); // 指数退避，最多等待5秒
+        console.warn(`⚠️  ${operationName} 失败 (尝试 ${attempt}/${retryCount}): ${error.message || error.code || error}`);
+        console.log(`🔄 ${waitTime}ms 后重试...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // 如果不是网络错误，或者是最后一次尝试，直接抛出错误
+      throw error;
+    }
+  }
+  
+  // 所有重试都失败
+  throw lastError;
+}
+
 // 读取数据（从 LeanCloud 数据库或文件系统）
 async function readData() {
   if (USE_DATABASE) {
     // 从 LeanCloud 数据库读取
     try {
-      const DataObject = AV.Object.extend('ListData');
-      const query = new AV.Query(DataObject);
-      query.equalTo('type', 'main'); // 使用 type 字段查询
-      
-      let result;
-      try {
-        result = await query.first();
-      } catch (queryError) {
-        // 如果类不存在（404），返回空数据
-        if (queryError.code === 101 || queryError.code === 404) {
-          // 101: 查询结果不存在, 404: 类不存在
-          return { list: [] };
+      // 使用带超时和重试的包装函数
+      const result = await withTimeoutAndRetry(async () => {
+        const DataObject = AV.Object.extend('ListData');
+        const query = new AV.Query(DataObject);
+        query.equalTo('type', 'main'); // 使用 type 字段查询
+        
+        try {
+          const queryResult = await query.first();
+          
+          // 如果类不存在（404），返回空数据
+          if (!queryResult) {
+            return { list: [] };
+          }
+          
+          const list = queryResult.get('list') || [];
+          return { list };
+        } catch (queryError) {
+          // 如果类不存在（404），返回空数据
+          if (queryError.code === 101 || queryError.code === 404) {
+            // 101: 查询结果不存在, 404: 类不存在
+            return { list: [] };
+          }
+          throw queryError; // 其他错误继续抛出
         }
-        throw queryError; // 其他错误继续抛出
-      }
+      }, '读取数据');
       
-      if (result) {
-        const list = result.get('list') || [];
-        return { list };
-      } else {
-        // 如果不存在，返回空数据
-        return { list: [] };
-      }
+      return result;
     } catch (error) {
       console.error('从数据库读取数据失败:', error);
+      console.error('错误详情:', {
+        code: error.code,
+        message: error.message,
+        rawMessage: error.rawMessage
+      });
+      // 即使失败也返回空数据，避免应用崩溃
       return { list: [] };
     }
   } else {
@@ -174,41 +240,49 @@ async function writeData(data) {
   if (USE_DATABASE) {
     // 写入到 LeanCloud 数据库
     try {
-      const DataObject = AV.Object.extend('ListData');
-      const query = new AV.Query(DataObject);
-      query.equalTo('type', 'main'); // 使用 type 字段查询
-      
-      let result;
-      try {
-        result = await query.first();
-      } catch (queryError) {
-        // 如果类不存在（404），result 设为 null，后续会创建新对象
-        // LeanCloud 会在第一次保存时自动创建类
-        if (queryError.code === 101 || queryError.code === 404) {
-          // 101: 查询结果不存在, 404: 类不存在
-          result = null;
-        } else {
-          throw queryError; // 其他错误继续抛出
+      // 使用带超时和重试的包装函数
+      await withTimeoutAndRetry(async () => {
+        const DataObject = AV.Object.extend('ListData');
+        const query = new AV.Query(DataObject);
+        query.equalTo('type', 'main'); // 使用 type 字段查询
+        
+        let result;
+        try {
+          result = await query.first();
+        } catch (queryError) {
+          // 如果类不存在（404），result 设为 null，后续会创建新对象
+          // LeanCloud 会在第一次保存时自动创建类
+          if (queryError.code === 101 || queryError.code === 404) {
+            // 101: 查询结果不存在, 404: 类不存在
+            result = null;
+          } else {
+            throw queryError; // 其他错误继续抛出
+          }
         }
-      }
+        
+        if (result) {
+          // 更新现有对象
+          result.set('list', data.list || []);
+          await result.save();
+          console.log('✅ 数据已保存到 LeanCloud 数据库');
+        } else {
+          // 创建新对象（如果类不存在，LeanCloud 会自动创建类）
+          const dataObj = new DataObject();
+          dataObj.set('type', 'main'); // 使用 type 字段标识
+          dataObj.set('list', data.list || []);
+          await dataObj.save();
+          console.log('✅ 数据已创建并保存到 LeanCloud 数据库（类已自动创建）');
+        }
+      }, '写入数据');
       
-      if (result) {
-        // 更新现有对象
-        result.set('list', data.list || []);
-        await result.save();
-        console.log('✅ 数据已保存到 LeanCloud 数据库');
-        return true;
-      } else {
-        // 创建新对象（如果类不存在，LeanCloud 会自动创建类）
-        const dataObj = new DataObject();
-        dataObj.set('type', 'main'); // 使用 type 字段标识
-        dataObj.set('list', data.list || []);
-        await dataObj.save();
-        console.log('✅ 数据已创建并保存到 LeanCloud 数据库（类已自动创建）');
-        return true;
-      }
+      return true;
     } catch (error) {
       console.error('❌ 写入数据库失败:', error);
+      console.error('错误详情:', {
+        code: error.code,
+        message: error.message,
+        rawMessage: error.rawMessage
+      });
       return false;
     }
   } else {
